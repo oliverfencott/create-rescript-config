@@ -5,11 +5,13 @@
   "repository": "https://github.com/oliverfencott/create-rescript-config.git",
   "author": "Oliver Fencott <oliverfencott@gmail.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">= 12.16.1"
+  },
   "bin": {
     "create-rescript-config": "./create-rescript-config.js"
   },
   "dependencies": {
-    "bs-platform": "^9.0.1",
     "chalk": "^4.1.0",
     "inquirer": "^8.0.0",
     "validate-npm-package-name": "^3.0.0"
