@@ -273,16 +273,23 @@ const writeJson = (file, config) =>
 
 /**
  *
+ * @param {string} filePath
+ * @returns Promise<boolean>
+ */
+const validatePathExists = filePath =>
+  fs
+    .access(filePath)
+    .then(_ => true)
+    .catch(_e => false);
+/**
+ *
  * @param {BsConfig} config
  */
 const writeSrcDirectory = async config => {
   const [source] = config.sources;
   const dir = resolvePath(source.dir);
 
-  const directoryExists = await fs
-    .access(dir)
-    .then(_ => true)
-    .catch(_e => false);
+  const directoryExists = await validatePathExists(dir);
 
   if (!directoryExists) {
     const file = 'Index.res';
@@ -333,9 +340,7 @@ const run = async () => {
     return;
   }
 
-  const useYarn = await readFile('yarn.lock')
-    .then(() => true)
-    .catch(_e => false);
+  const useYarn = await validatePathExists('yarn.lock');
 
   const startPackageJSON = await readPackageJSON()
     .then(safeParse)
