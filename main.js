@@ -18,7 +18,7 @@ const chalk = require('chalk');
  *  src: string,
  *  moduleType: string,
  *  moduleSuffix: string,
- *  react: boolean,
+ *  addReact: boolean,
  *  buildCommand: string,
  *  watchCommand: string,
  *  cleanCommand: string,
@@ -90,7 +90,7 @@ const makeVersionKeys = keys => version =>
 /**
  * @param {CommandOptions} makeBsConfig
  */
-const makeBsConfig = ({ name, src, react, moduleType, moduleSuffix }) => {
+const makeBsConfig = ({ name, src, addReact, moduleType, moduleSuffix }) => {
   const config = {
     name,
     namespace: true,
@@ -105,7 +105,7 @@ const makeBsConfig = ({ name, src, react, moduleType, moduleSuffix }) => {
     'bsc-flags': ['-bs-super-errors', '-bs-g']
   };
 
-  if (react) {
+  if (addReact) {
     config['bs-dependencies'].push(REASON_REACT_PACKAGE);
     config.reason = { 'react-jsx': 3 };
   }
@@ -138,30 +138,15 @@ const setPackageJson = async (config, options) => {
     cleanCommand,
     watchCommand,
     addReScript,
-    react
+    addReact
   } = options;
 
   // Add name to package.json if not present
   config.name = config.name || options.name;
 
-  // TODO: ADD VALIDATION TO PROMPT CALL
-  if (config.scripts[cleanCommand]) {
-    console.log(`"scripts.${cleanCommand}" already exists, skipping`);
-  } else {
-    config.scripts[cleanCommand] = 'bsb -clean-world';
-  }
-
-  if (config.scripts[watchCommand]) {
-    console.log(`"scripts.${watchCommand}" already exists, skipping`);
-  } else {
-    config.scripts[watchCommand] = 'bsb -make-world -w';
-  }
-
-  if (config.scripts[buildCommand]) {
-    console.log(`"scripts.${buildCommand}" already exists, skipping`);
-  } else {
-    config.scripts[buildCommand] = 'bsb -make-world';
-  }
+  config.scripts[cleanCommand] = 'bsb -clean-world';
+  config.scripts[buildCommand] = 'bsb -make-world';
+  config.scripts[watchCommand] = 'bsb -make-world -w';
 
   /** @type Promise<{[key: string]: string}>[] */
   const dependencies = [];
@@ -172,7 +157,7 @@ const setPackageJson = async (config, options) => {
     );
   }
 
-  if (react) {
+  if (addReact) {
     if (!config.dependencies[REACT_PACKAGE]) {
       dependencies.push(
         fetchVersion(REACT_PACKAGE).then(
@@ -203,17 +188,25 @@ const receive = async () => {
     .then(safeParse)
     .then(assignPackageJsonDefaults);
 
-  const defaultName = packageJSON.name || '';
+  const projectName = packageJSON.name || '';
   const rescriptAlreadyInstalled =
     packageJSON.dependencies[RESCRIPT_PACKAGE] ||
     packageJSON.devDependencies[RESCRIPT_PACKAGE];
+
+  const validateCommand = input => {
+    if (packageJSON.scripts[input]) {
+      return `Script "${input}" already exists, please pick another`;
+    }
+
+    return true;
+  };
 
   const options = await prompt([
     {
       type: 'input',
       name: 'name',
       message: 'Project name',
-      default: defaultName,
+      default: projectName,
       validate: input => {
         const [error] = validate(input).errors || [];
 
@@ -249,7 +242,7 @@ const receive = async () => {
     {
       type: 'confirm',
       default: false,
-      name: 'react',
+      name: 'addReact',
       message: 'Add React?'
     },
     {
@@ -257,25 +250,29 @@ const receive = async () => {
       name: 'buildCommand',
       message: 'Build command',
       suffix: ' e.g. "npm run res:build"',
-      default: 'res:build'
+      default: packageJSON.scripts['res:build'] ? '' : 'res:build',
+      validate: validateCommand
     },
     {
       type: 'input',
       name: 'watchCommand',
       message: 'Watch command',
-      suffix: ' e.g. "npm run res:dev"',
-      default: 'res:dev'
+      suffix: ' e.g. "npm run res:watch"',
+      default: packageJSON.scripts['res:watch'] ? '' : 'res:watch',
+      validate: validateCommand
     },
     {
       type: 'input',
       name: 'cleanCommand',
       message: 'Clean command',
       suffix: ' e.g. "npm run res:clean"',
-      default: 'res:clean'
+      default: packageJSON.scripts['res:clean'] ? '' : 'res:clean',
+      validate: validateCommand
     }
   ]);
 
   options.addReScript = !rescriptAlreadyInstalled;
+
   const bsConfig = makeBsConfig(options);
   const pkg = await setPackageJson(packageJSON, options);
 

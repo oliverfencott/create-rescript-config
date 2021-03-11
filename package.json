@@ -19,6 +19,6 @@
   },
   "scripts": {
     "dev": "nodemon main.js",
-    "res:dev": "ji"
+    "res:clean": "ji"
   }
 }
