@@ -1,0 +1,24 @@
+{
+  "name": "create-rescript-config",
+  "version": "1.0.0",
+  "main": "main.js",
+  "repository": "https://github.com/oliverfencott/create-rescript-app.git",
+  "author": "Oliver Fencott <oliverfencott@gmail.com>",
+  "license": "MIT",
+  "bin": {
+    "create-rescript-config": "./main.js"
+  },
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "inquirer": "^8.0.0",
+    "npm-api": "^1.0.1",
+    "validate-npm-package-name": "^3.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "scripts": {
+    "dev": "nodemon main.js",
+    "res:dev": "ji"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "create-rescript-app",
+  "namespace": false,
+  "reason": {
+    "react-jsx": 3
+  },
+  "bs-dependencies": ["reason-react"],
+  "ppx-flags": [],
+  "sources": [{
+    "dir": "src",
+    "subdirs": true
+  }],
+  "package-specs": {
+    "module": "es6",
+    "in-source": true,
+    "suffix": ".bs.js"
+  },
+  "bsc-flags": [],
+  "gentypeconfig": {
+    "language": "",
+    "shims": [],
+    "module": "es6"
+  },
+  "bs-dev-dependencies": [],
+  "bs-external-includes": [],
+  "ignored-dirs": [],
+  "pinned-dependencies": []
+}
