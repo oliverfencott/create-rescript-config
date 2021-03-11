@@ -1,17 +1,18 @@
 {
   "name": "create-rescript-config",
-  "namespace": true,
-  "bs-dependencies": [],
+  "namespace": false,
+  "reason": {
+    "react-jsx": 3
+  },
+  "bs-dependencies": ["reason-react"],
   "ppx-flags": [],
-  "sources": [
-    {
-      "dir": "src",
-      "subdirs": true
-    }
-  ],
+  "sources": [{
+    "dir": "src",
+    "subdirs": true
+  }],
   "package-specs": {
+    "module": "es6",
     "in-source": true,
-    "module": "commonjs",
     "suffix": ".bs.js"
   },
   "bsc-flags": [],

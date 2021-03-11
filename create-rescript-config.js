@@ -4,20 +4,13 @@
 
 'use strict';
 
-const fs = require('fs').promises;
-const path = require('path');
-const validate = require('validate-npm-package-name');
-const Npm = require('npm-api');
-const { prompt } = require('inquirer');
-
-const chalk = require('chalk');
-
 /**
+ *
  * @typedef {{
  *  name: string,
  *  src: string,
- *  moduleType: string,
- *  moduleSuffix: string,
+ *  moduleType: ModuleType,
+ *  fileExtension: FileExtension,
  *  addReact: boolean,
  *  buildCommand: string,
  *  watchCommand: string,
@@ -27,6 +20,7 @@ const chalk = require('chalk');
  */
 
 /**
+ *
  * @typedef {{
  *  name: string,
  *  dependencies: {[key: string]: string},
@@ -36,14 +30,51 @@ const chalk = require('chalk');
  */
 
 /**
+ *
  * @typedef {"commonjs" | "es6" | "es6-global"} ModuleType
  */
 
 /**
+ *
  * @typedef {".bs.js" | ".mjs" | ".cjs" | ".js"} FileExtension
  */
 
 /**
+ *
+ * @typedef {{
+ *  name: string,
+ *  namespace: boolean,
+ *  'bs-dependencies': string[],
+ *  'ppx-flags': string[],
+ *  sources: { dir: string, subdirs: boolean }[],
+ *  'package-specs': {
+ *    'in-source': boolean,
+ *    module: ModuleType,
+ *    suffix: FileExtension
+ *  },
+ *  'bsc-flags': string[],
+ *  'bs-dev-dependencies': string[],
+ *  'bs-external-includes': string[],
+ *  'ignored-dirs': string[],
+ *  'pinned-dependencies': string[]
+ * }} BsConfig
+ */
+
+const fs = require('fs').promises;
+const path = require('path');
+const validate = require('validate-npm-package-name');
+const Npm = require('npm-api');
+const { prompt } = require('inquirer');
+const chalk = require('chalk');
+
+/**
+ *
+ * @param {string} file
+ */
+const resolvePath = file => path.resolve(process.cwd(), file);
+
+/**
+ *
  * @param {string} repo
  * @returns {Promise<string>}
  */
@@ -55,19 +86,28 @@ let fetchVersion = repo => {
     .catch(_e => 'latest');
 };
 
+const BS_CONFIG = 'bsconfig.json';
+const PACKAGE_JSON = 'package.json';
 const RESCRIPT_PACKAGE = 'bs-platform';
 const REACT_PACKAGE = 'react';
 const REACT_DOM_PACKAGE = 'react-dom';
 const REASON_REACT_PACKAGE = 'reason-react';
 
+/**
+ *
+ * @param {unknown} x
+ * @returns void
+ */
+const log = x => console.log(x);
+const logLine = () => log('\n');
 const readFile = file =>
   fs
-    .readFile(path.resolve(process.cwd(), file), {
+    .readFile(resolvePath(file), {
       encoding: 'utf-8'
     })
     .catch(_e => undefined);
 
-const readPackageJSON = () => readFile('package.json');
+const readPackageJSON = () => readFile(PACKAGE_JSON);
 
 const safeParse = input => {
   try {
@@ -77,20 +117,32 @@ const safeParse = input => {
   }
 };
 
-/** @type ModuleType[] */
+/**
+ *
+ * @type ModuleType[]
+ */
 const moduleTypes = ['commonjs', 'es6', 'es6-global'];
 
-/** @type FileExtension[] */
+/**
+ *
+ * @type FileExtension[]
+ */
 const moduleSuffixes = ['.bs.js', '.js', '.mjs', '.cjs'];
 
-/**  @param {string[]} keys */
+/**
+ *
+ * @param {string[]} keys
+ */
 const makeVersionKeys = keys => version =>
   Object.fromEntries(keys.map(key => [key, version]));
 
 /**
- * @param {CommandOptions} makeBsConfig
+ *
+ * @param {CommandOptions} options
+ * @returns BsConfig
  */
-const makeBsConfig = ({ name, src, addReact, moduleType, moduleSuffix }) => {
+const makeBsConfig = options => {
+  const { name, src, addReact, moduleType, fileExtension } = options;
   const config = {
     name,
     namespace: true,
@@ -100,9 +152,13 @@ const makeBsConfig = ({ name, src, addReact, moduleType, moduleSuffix }) => {
     'package-specs': {
       'in-source': true,
       module: moduleType,
-      suffix: moduleSuffix
+      suffix: fileExtension
     },
-    'bsc-flags': ['-bs-super-errors', '-bs-g']
+    'bsc-flags': [],
+    'bs-dev-dependencies': [],
+    'bs-external-includes': [],
+    'ignored-dirs': [],
+    'pinned-dependencies': []
   };
 
   if (addReact) {
@@ -119,6 +175,7 @@ const makeBsConfig = ({ name, src, addReact, moduleType, moduleSuffix }) => {
  * @returns config
  */
 const assignPackageJsonDefaults = config => {
+  config.name = config.name || '';
   config.scripts = config.scripts || {};
   config.dependencies = config.dependencies || {};
   config.devDependencies = config.devDependencies || {};
@@ -141,8 +198,10 @@ const setPackageJson = async (config, options) => {
     addReact
   } = options;
 
-  // Add name to package.json if not present
-  config.name = config.name || options.name;
+  /** Add name to package.json if not present */
+  if (!config.name) {
+    config.name = options.name;
+  }
 
   config.scripts[cleanCommand] = 'bsb -clean-world';
   config.scripts[buildCommand] = 'bsb -make-world';
@@ -183,22 +242,95 @@ const setPackageJson = async (config, options) => {
   return config;
 };
 
-const receive = async () => {
-  const packageJSON = await readPackageJSON()
+/**
+ *
+ * @param {string} message
+ * @returns [string]
+ */
+const makeWriteErrorMessage = message => [
+  chalk`{bold.red Error}: Unable to write {bold ${message}}`
+];
+
+/**
+ *
+ * @param {string} message
+ * @returns [string]
+ */
+const makeWriteSuccessMessage = message => [
+  chalk`{bold.green Success}: wrote {bold ${message}}`
+];
+
+/**
+ *
+ * @param {string} file
+ * @param {PackageJson | BsConfig} config
+ */
+const writeJson = (file, config) =>
+  fs
+    .writeFile(resolvePath(file), JSON.stringify(config, null, 2))
+    .then(() => makeWriteSuccessMessage(file))
+    .catch(() => makeWriteErrorMessage(file));
+
+/**
+ *
+ * @param {BsConfig} config
+ */
+const writeSrcDirectory = async config => {
+  const [source] = config.sources;
+  const dir = resolvePath(source.dir);
+
+  const directoryExists = await fs
+    .access(dir)
+    .then(_ => true)
+    .catch(_e => false);
+
+  if (!directoryExists) {
+    const file = 'Index.res';
+    const program = [
+      `// Generated by create-rescript-config`,
+      `let default = () => "Hello, world!"->Js.log`
+    ].join('\n\n');
+
+    return fs
+      .mkdir(dir)
+      .then(() =>
+        fs
+          .writeFile(path.join(dir, file), program)
+          .then(() => makeWriteSuccessMessage(source.dir + '/' + file))
+          .catch(() => makeWriteErrorMessage(source.dir + '/' + file))
+      )
+      .catch(() => makeWriteErrorMessage(source.dir));
+  }
+
+  return [];
+};
+
+const run = async () => {
+  const bsConfigAlreadyPresent = await readFile(BS_CONFIG).then(Boolean);
+
+  if (bsConfigAlreadyPresent) {
+    logLine();
+    log(
+      chalk`{bold.red Aborting}: {bold ${BS_CONFIG}} file already present in current directory.`
+    );
+    logLine();
+    return;
+  }
+
+  const startPackageJSON = await readPackageJSON()
     .then(safeParse)
     .then(assignPackageJsonDefaults);
 
-  const projectName = packageJSON.name || '';
   const rescriptAlreadyInstalled =
-    packageJSON.dependencies[RESCRIPT_PACKAGE] ||
-    packageJSON.devDependencies[RESCRIPT_PACKAGE];
+    startPackageJSON.dependencies[RESCRIPT_PACKAGE] ||
+    startPackageJSON.devDependencies[RESCRIPT_PACKAGE];
 
   const validateCommand = input => {
-    if (packageJSON.scripts[input]) {
+    if (startPackageJSON.scripts[input]) {
       return `Script "${input}" already exists, please pick another`;
     }
 
-    return true;
+    return input.trim().length > 0;
   };
 
   const options = await prompt([
@@ -206,7 +338,7 @@ const receive = async () => {
       type: 'input',
       name: 'name',
       message: 'Project name',
-      default: projectName,
+      default: startPackageJSON.name,
       validate: input => {
         const [error] = validate(input).errors || [];
 
@@ -217,7 +349,8 @@ const receive = async () => {
       type: 'input',
       name: 'src',
       message: 'Source directory',
-      default: 'src'
+      default: 'src',
+      validate: input => input.trim().length > 0
     },
     {
       type: 'list',
@@ -231,7 +364,7 @@ const receive = async () => {
     },
     {
       type: 'list',
-      name: 'moduleSuffix',
+      name: 'fileExtension',
       message: 'File extension',
       choices: moduleSuffixes.map(name => ({
         type: 'choice',
@@ -250,7 +383,7 @@ const receive = async () => {
       name: 'buildCommand',
       message: 'Build command',
       suffix: ' e.g. "npm run res:build"',
-      default: packageJSON.scripts['res:build'] ? '' : 'res:build',
+      default: startPackageJSON.scripts['res:build'] ? '' : 'res:build',
       validate: validateCommand
     },
     {
@@ -258,7 +391,7 @@ const receive = async () => {
       name: 'watchCommand',
       message: 'Watch command',
       suffix: ' e.g. "npm run res:watch"',
-      default: packageJSON.scripts['res:watch'] ? '' : 'res:watch',
+      default: startPackageJSON.scripts['res:watch'] ? '' : 'res:watch',
       validate: validateCommand
     },
     {
@@ -266,18 +399,44 @@ const receive = async () => {
       name: 'cleanCommand',
       message: 'Clean command',
       suffix: ' e.g. "npm run res:clean"',
-      default: packageJSON.scripts['res:clean'] ? '' : 'res:clean',
+      default: startPackageJSON.scripts['res:clean'] ? '' : 'res:clean',
       validate: validateCommand
     }
   ]);
 
+  options.src = options.src.trim();
+  options.name = options.name.trim();
+  options.buildCommand = options.buildCommand.trim();
+  options.watchCommand = options.watchCommand.trim();
+  options.cleanCommand = options.cleanCommand.trim();
   options.addReScript = !rescriptAlreadyInstalled;
 
   const bsConfig = makeBsConfig(options);
-  const pkg = await setPackageJson(packageJSON, options);
+  const packageJson = await setPackageJson(startPackageJSON, options);
 
-  console.log(bsConfig);
-  console.log(pkg);
+  logLine();
+  log(chalk`{bold ${PACKAGE_JSON}} will be overwritten with:`);
+  logLine();
+  log(JSON.stringify(packageJson, null, 2));
+  logLine();
+
+  const { proceed } = await prompt({
+    type: 'confirm',
+    name: 'proceed',
+    message: 'Continue?'
+  });
+
+  if (proceed) {
+    const messages = await Promise.all([
+      writeJson(PACKAGE_JSON, packageJson),
+      writeJson(BS_CONFIG, bsConfig),
+      writeSrcDirectory(bsConfig)
+    ]);
+
+    logLine();
+    messages.flat().forEach(log);
+    logLine();
+  }
 };
 
-receive();
+run();
