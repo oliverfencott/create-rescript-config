@@ -430,8 +430,18 @@ const run = async () => {
       .join(' ');
 
     let message = useYarn
-      ? `yarn add ${dependencies} && yarn ${options.watchCommand}`
-      : `npm install ${dependencies} --save && npm install ${options.watchCommand}`;
+      ? [
+          dependencies && `yarn add ${dependencies}`,
+          `yarn ${options.watchCommand}`
+        ]
+          .filter(Boolean)
+          .join(' && ')
+      : [
+          dependencies && `npm install ${dependencies} --save`,
+          `npm install ${options.watchCommand}`
+        ]
+          .filter(Boolean)
+          .join(' && ');
 
     logLine();
     log(chalk`Now run:`);

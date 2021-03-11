@@ -9,6 +9,7 @@
     "create-rescript-config": "./create-rescript-config.js"
   },
   "dependencies": {
+    "bs-platform": "^9.0.1",
     "chalk": "^4.1.0",
     "inquirer": "^8.0.0",
     "validate-npm-package-name": "^3.0.0"
@@ -17,9 +18,6 @@
     "nodemon": "^2.0.7"
   },
   "scripts": {
-    "dev": "nodemon create-rescript-config.js",
-    "res:clean": "bsb -clean-world",
-    "res:build": "bsb -make-world",
-    "res:watch": "bsb -make-world -w"
+    "dev": "nodemon create-rescript-config.js"
   }
 }
