@@ -2,7 +2,7 @@
   "name": "create-rescript-config",
   "version": "1.0.0",
   "main": "main.js",
-  "repository": "https://github.com/oliverfencott/create-rescript-app.git",
+  "repository": "https://github.com/oliverfencott/create-rescript-config.git",
   "author": "Oliver Fencott <oliverfencott@gmail.com>",
   "license": "MIT",
   "bin": {
