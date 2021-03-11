@@ -1,0 +1,27 @@
+{
+  "name": "create-rescript-config",
+  "namespace": true,
+  "bs-dependencies": [
+    "reason-react"
+  ],
+  "ppx-flags": [],
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "package-specs": {
+    "in-source": true,
+    "module": "commonjs",
+    "suffix": ".bs.js"
+  },
+  "bsc-flags": [],
+  "bs-dev-dependencies": [],
+  "bs-external-includes": [],
+  "ignored-dirs": [],
+  "pinned-dependencies": [],
+  "reason": {
+    "react-jsx": 3
+  }
+}

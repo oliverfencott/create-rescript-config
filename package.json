@@ -11,13 +11,15 @@
   "dependencies": {
     "chalk": "^4.1.0",
     "inquirer": "^8.0.0",
-    "npm-api": "^1.0.1",
     "validate-npm-package-name": "^3.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.7"
   },
   "scripts": {
-    "dev": "nodemon create-rescript-config.js"
+    "dev": "nodemon create-rescript-config.js",
+    "res:clean": "bsb -clean-world",
+    "res:build": "bsb -make-world",
+    "res:watch": "bsb -make-world -w"
   }
 }

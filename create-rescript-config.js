@@ -63,7 +63,6 @@
 const fs = require('fs').promises;
 const path = require('path');
 const validate = require('validate-npm-package-name');
-const Npm = require('npm-api');
 const { prompt } = require('inquirer');
 const chalk = require('chalk');
 const pkg = require('./package.json');
@@ -73,18 +72,6 @@ const pkg = require('./package.json');
  * @param {string} file
  */
 const resolvePath = file => path.resolve(process.cwd(), file);
-
-/**
- *
- * @param {string} repo
- * @returns {Promise<string>}
- */
-let fetchVersion = repo =>
-  new Npm()
-    .repo(repo)
-    .package()
-    .then(x => x.version)
-    .catch(_e => 'latest');
 
 const BS_CONFIG = 'bsconfig.json';
 const PACKAGE_JSON = 'package.json';
@@ -100,18 +87,17 @@ const REASON_REACT_PACKAGE = 'reason-react';
  */
 const log = x => console.log(x);
 const logLine = () => log('');
-const readFile = file =>
-  fs
-    .readFile(resolvePath(file), {
+
+const readPackageJSON = async () => {
+  const file = await fs
+    .readFile(resolvePath(PACKAGE_JSON), {
       encoding: 'utf-8'
     })
     .catch(_e => undefined);
 
-const readPackageJSON = () => readFile(PACKAGE_JSON);
-
-const safeParse = input => {
+  /** Safe parse */
   try {
-    return JSON.parse(input);
+    return JSON.parse(file);
   } catch (error) {
     return {};
   }
@@ -190,13 +176,7 @@ const assignPackageJsonDefaults = config => {
  * @returns config
  */
 const setPackageJson = async (config, options) => {
-  const {
-    buildCommand,
-    cleanCommand,
-    watchCommand,
-    addReScript,
-    addReact
-  } = options;
+  const { buildCommand, cleanCommand, watchCommand } = options;
 
   /** Add name to package.json if not present */
   if (!config.name) {
@@ -206,38 +186,6 @@ const setPackageJson = async (config, options) => {
   config.scripts[cleanCommand] = 'bsb -clean-world';
   config.scripts[buildCommand] = 'bsb -make-world';
   config.scripts[watchCommand] = 'bsb -make-world -w';
-
-  /** @type Promise<{[key: string]: string}>[] */
-  const dependencies = [];
-
-  if (addReScript) {
-    dependencies.push(
-      fetchVersion(RESCRIPT_PACKAGE).then(makeVersionKeys([RESCRIPT_PACKAGE]))
-    );
-  }
-
-  if (addReact) {
-    if (!config.dependencies[REACT_PACKAGE]) {
-      dependencies.push(
-        fetchVersion(REACT_PACKAGE).then(
-          makeVersionKeys([REACT_PACKAGE, REACT_DOM_PACKAGE])
-        )
-      );
-    }
-
-    if (!config.dependencies[REASON_REACT_PACKAGE]) {
-      dependencies.push(
-        fetchVersion(REASON_REACT_PACKAGE).then(
-          makeVersionKeys([REASON_REACT_PACKAGE])
-        )
-      );
-    }
-  }
-
-  config.dependencies = (await Promise.all(dependencies)).reduce(
-    (a, b) => Object.assign(a, b),
-    config.dependencies
-  );
 
   return config;
 };
@@ -314,23 +262,24 @@ const writeSrcDirectory = async config => {
 
 const resetConsole = () => {
   const name = `Create ReScript config`;
-  const version = 'v' + pkg.version;
+  const version = `v${pkg.version}`;
   const message = `${name} ${version}`;
 
   const padding = '-'.repeat(message.length + 4);
 
   console.clear();
-  log(padding);
-  log(chalk`{bold ${name} {green ${version}}}`);
 
   log(padding);
+  log(chalk`{bold ${name} {green ${version}}}`);
+  log(padding);
+
   logLine();
 };
 
 const run = async () => {
   resetConsole();
 
-  const bsConfigAlreadyPresent = await readFile(BS_CONFIG).then(Boolean);
+  const bsConfigAlreadyPresent = await validatePathExists(BS_CONFIG);
 
   if (bsConfigAlreadyPresent) {
     log(
@@ -342,9 +291,9 @@ const run = async () => {
 
   const useYarn = await validatePathExists('yarn.lock');
 
-  const startPackageJSON = await readPackageJSON()
-    .then(safeParse)
-    .then(assignPackageJsonDefaults);
+  const startPackageJSON = await readPackageJSON().then(
+    assignPackageJsonDefaults
+  );
 
   const rescriptAlreadyInstalled =
     startPackageJSON.dependencies[RESCRIPT_PACKAGE] ||
@@ -437,7 +386,6 @@ const run = async () => {
   options.buildCommand = options.buildCommand.trim();
   options.watchCommand = options.watchCommand.trim();
   options.cleanCommand = options.cleanCommand.trim();
-  options.addReScript = !rescriptAlreadyInstalled;
 
   const bsConfig = makeBsConfig(options);
   const packageJson = await setPackageJson(startPackageJSON, options);
@@ -456,6 +404,7 @@ const run = async () => {
 
   if (proceed) {
     resetConsole();
+
     const messages = await Promise.all([
       writeJson(PACKAGE_JSON, packageJson),
       writeJson(BS_CONFIG, bsConfig),
@@ -464,15 +413,31 @@ const run = async () => {
 
     messages.flat().forEach(log);
 
+    const dependencies = [
+      !rescriptAlreadyInstalled && RESCRIPT_PACKAGE,
+
+      options.addReact &&
+        !packageJson.dependencies[REACT_PACKAGE] && [
+          REACT_PACKAGE,
+          REACT_DOM_PACKAGE
+        ],
+      options.addReact &&
+        !packageJson.dependencies[REASON_REACT_PACKAGE] &&
+        REASON_REACT_PACKAGE
+    ]
+      .flat()
+      .filter(Boolean)
+      .join(' ');
+
+    let message = useYarn
+      ? `yarn add ${dependencies} && yarn ${options.watchCommand}`
+      : `npm install ${dependencies} --save && npm install ${options.watchCommand}`;
+
     logLine();
     log(chalk`Now run:`);
     logLine();
 
-    if (useYarn) {
-      log(chalk`    {bold yarn && yarn ${options.watchCommand}}`);
-    } else {
-      log(chalk`    {bold npm install && npm run ${options.watchCommand}}`);
-    }
+    log(chalk`  {bold ${message}}`);
 
     logLine();
   }
