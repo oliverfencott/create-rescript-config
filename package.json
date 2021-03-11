@@ -1,12 +1,12 @@
 {
   "name": "create-rescript-config",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "create-rescript-config.js",
   "repository": "https://github.com/oliverfencott/create-rescript-config.git",
   "author": "Oliver Fencott <oliverfencott@gmail.com>",
   "license": "MIT",
   "bin": {
-    "create-rescript-config": "./main.js"
+    "create-rescript-config": "./create-rescript-config.js"
   },
   "dependencies": {
     "chalk": "^4.1.0",
@@ -18,7 +18,7 @@
     "nodemon": "^2.0.7"
   },
   "scripts": {
-    "dev": "nodemon main.js",
+    "dev": "nodemon create-rescript-config.js",
     "res:clean": "ji"
   }
 }
