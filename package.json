@@ -22,9 +22,6 @@
     "dev": "nodemon create-rescript-config.js",
     "res:clean": "bsb -clean-world",
     "res:build": "bsb -make-world",
-    "res:watch": "bsb -make-world -w",
-    "dsfsdf": "bsb -clean-world",
-    "ads": "bsb -make-world",
-    "sdafsdf": "bsb -make-world -w"
+    "res:watch": "bsb -make-world -w"
   }
 }

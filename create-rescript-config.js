@@ -66,6 +66,7 @@ const validate = require('validate-npm-package-name');
 const Npm = require('npm-api');
 const { prompt } = require('inquirer');
 const chalk = require('chalk');
+const pkg = require('./package.json');
 
 /**
  *
@@ -99,7 +100,7 @@ const REASON_REACT_PACKAGE = 'reason-react';
  * @returns void
  */
 const log = x => console.log(x);
-const logLine = () => log('\n');
+const logLine = () => log('');
 const readFile = file =>
   fs
     .readFile(resolvePath(file), {
@@ -305,17 +306,37 @@ const writeSrcDirectory = async config => {
   return [];
 };
 
+const resetConsole = () => {
+  const name = `Create ReScript config`;
+  const version = 'v' + pkg.version;
+  const message = `${name} ${version}`;
+
+  const padding = '-'.repeat(message.length + 4);
+
+  console.clear();
+  log(padding);
+  log(chalk`{bold ${name} {green ${version}}}`);
+
+  log(padding);
+  logLine();
+};
+
 const run = async () => {
+  resetConsole();
+
   const bsConfigAlreadyPresent = await readFile(BS_CONFIG).then(Boolean);
 
   if (bsConfigAlreadyPresent) {
-    logLine();
     log(
       chalk`{bold.red Aborting}: {bold ${BS_CONFIG}} file already present in current directory.`
     );
     logLine();
     return;
   }
+
+  const useYarn = await readFile('yarn.lock')
+    .then(() => true)
+    .catch(_e => false);
 
   const startPackageJSON = await readPackageJSON()
     .then(safeParse)
@@ -333,6 +354,9 @@ const run = async () => {
     return input.trim().length > 0;
   };
 
+  /**
+   * @type {CommandOptions}
+   */
   const options = await prompt([
     {
       type: 'input',
@@ -414,11 +438,11 @@ const run = async () => {
   const bsConfig = makeBsConfig(options);
   const packageJson = await setPackageJson(startPackageJSON, options);
 
-  logLine();
+  resetConsole();
+
   log(chalk`{bold ${PACKAGE_JSON}} will be overwritten with:`);
   logLine();
   log(JSON.stringify(packageJson, null, 2));
-  logLine();
 
   const { proceed } = await prompt({
     type: 'confirm',
@@ -427,14 +451,25 @@ const run = async () => {
   });
 
   if (proceed) {
+    resetConsole();
     const messages = await Promise.all([
       writeJson(PACKAGE_JSON, packageJson),
       writeJson(BS_CONFIG, bsConfig),
       writeSrcDirectory(bsConfig)
     ]);
 
-    logLine();
     messages.flat().forEach(log);
+
+    logLine();
+    log(chalk`Now run:`);
+    logLine();
+
+    if (useYarn) {
+      log(chalk`    {bold yarn && yarn ${options.watchCommand}}`);
+    } else {
+      log(chalk`    {bold npm install && npm run ${options.watchCommand}}`);
+    }
+
     logLine();
   }
 };
