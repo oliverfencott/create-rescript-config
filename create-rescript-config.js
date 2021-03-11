@@ -79,13 +79,12 @@ const resolvePath = file => path.resolve(process.cwd(), file);
  * @param {string} repo
  * @returns {Promise<string>}
  */
-let fetchVersion = repo => {
-  return new Npm()
+let fetchVersion = repo =>
+  new Npm()
     .repo(repo)
     .package()
     .then(x => x.version)
     .catch(_e => 'latest');
-};
 
 const BS_CONFIG = 'bsconfig.json';
 const PACKAGE_JSON = 'package.json';
