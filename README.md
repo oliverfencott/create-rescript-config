@@ -1,1 +1,1 @@
-# create-rescript-app
+# create-rescript-config
