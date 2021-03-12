@@ -17,5 +17,14 @@
     "inquirer": "^8.0.0",
     "validate-npm-package-name": "^3.0.0"
   },
+  "keywords": [
+    "rescript",
+    "res",
+    "create-rescript-config",
+    "reason",
+    "reasonml",
+    "re",
+    "ocaml"
+  ],
   "devDependencies": {}
 }
