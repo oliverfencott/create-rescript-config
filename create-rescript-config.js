@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // @ts-check
 
 'use strict';
@@ -363,9 +365,9 @@ const run = async () => {
       ? `${dependencies && `yarn add ${dependencies} &&`} yarn ${
           options.watchCommand
         }`
-      : `${
-          dependencies && `npm install ${dependencies} --save &&`
-        } npm install ${options.watchCommand}`;
+      : `${dependencies && `npm install ${dependencies} --save &&`} npm run ${
+          options.watchCommand
+        }`;
 
     const bsConfig = makeBsConfig(options);
 
