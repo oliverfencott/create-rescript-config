@@ -1,5 +1,3 @@
-#!usr/bin/env node
-
 // @ts-check
 
 'use strict';
@@ -64,7 +62,7 @@ const path = require('path');
 const validate = require('validate-npm-package-name');
 const { prompt } = require('inquirer');
 const chalk = require('chalk');
-const { version: pkgVersion } = require('./package.json');
+const { print, printLine, clear } = require('./ui');
 
 /**
  *
@@ -79,14 +77,6 @@ const RESCRIPT_PACKAGE = 'bs-platform';
 const REACT_PACKAGE = 'react';
 const REACT_DOM_PACKAGE = 'react-dom';
 const REASON_REACT_PACKAGE = 'reason-react';
-
-/**
- *
- * @param {unknown} x
- * @returns void
- */
-const log = x => console.log(x);
-const logLine = () => log('');
 
 const readPackageJSON = async () => {
   const file = await fs
@@ -232,32 +222,14 @@ const writeSrcDirectory = async config => {
     .catch(() => makeErrorMessage(source.dir));
 };
 
-const resetConsole = () => {
-  const name = `Create ReScript config`;
-  const version = `v${pkgVersion}`;
-  const message = `${name} ${version}`;
-
-  const padding = '-'.repeat(message.length + 4);
-
-  console.clear();
-
-  log(padding);
-  log(chalk`{bold ${name} {green ${version}}}`);
-  log(padding);
-
-  logLine();
-};
-
 const run = async () => {
-  resetConsole();
-
   const bsConfigAlreadyPresent = await pathExists(BS_CONFIG);
 
   if (bsConfigAlreadyPresent) {
-    log(
+    print(
       chalk`{bold.red Aborting}: {bold ${BS_CONFIG}} file already present in current directory.`
     );
-    logLine();
+    printLine();
     return;
   }
 
@@ -356,11 +328,11 @@ const run = async () => {
   pkg.scripts[options.buildCommand.trim()] = 'bsb -make-world';
   pkg.scripts[options.watchCommand.trim()] = 'bsb -make-world -w';
 
-  resetConsole();
+  clear();
 
-  log(chalk`{bold ${PACKAGE_JSON}} will be overwritten with:`);
-  logLine();
-  log(JSON.stringify(pkg, null, 2));
+  print(chalk`{bold ${PACKAGE_JSON}} will be overwritten with:`);
+  printLine();
+  print(JSON.stringify(pkg, null, 2));
 
   const { proceed } = await prompt({
     type: 'confirm',
@@ -405,13 +377,13 @@ const run = async () => {
       ])
     ).flat();
 
-    resetConsole();
-    fileWriteMessages.forEach(log);
-    logLine();
-    log(chalk`Now run:`);
-    logLine();
-    log(chalk`  {bold ${runMessage}}`);
-    logLine();
+    clear();
+    fileWriteMessages.forEach(print);
+    printLine();
+    print(chalk`Now run:`);
+    printLine();
+    print(chalk`  {bold ${runMessage}}`);
+    printLine();
   }
 };
 
