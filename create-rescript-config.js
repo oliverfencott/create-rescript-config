@@ -78,7 +78,7 @@ const PACKAGE_JSON = 'package.json';
 const RESCRIPT_PACKAGE = 'bs-platform';
 const REACT_PACKAGE = 'react';
 const REACT_DOM_PACKAGE = 'react-dom';
-const REASON_REACT_PACKAGE = 'reason-react';
+const RESCRIPT_REACT_PACKAGE = '@rescript/react';
 
 const readPackageJSON = async () => {
   const file = await fs
@@ -133,7 +133,7 @@ const makeBsConfig = options => {
   };
 
   if (addReact) {
-    config['bs-dependencies'].push(REASON_REACT_PACKAGE);
+    config['bs-dependencies'].push(RESCRIPT_REACT_PACKAGE);
     config.reason = { 'react-jsx': 3 };
   }
 
@@ -350,12 +350,12 @@ const run = async () => {
     const addReact = options.addReact && !pkg.dependencies[REACT_PACKAGE];
 
     const addReasonReact =
-      options.addReact && !pkg.dependencies[REASON_REACT_PACKAGE];
+      options.addReact && !pkg.dependencies[RESCRIPT_REACT_PACKAGE];
 
     const dependencies = [
       addReScript && RESCRIPT_PACKAGE,
       addReact && [REACT_PACKAGE, REACT_DOM_PACKAGE],
-      addReasonReact && REASON_REACT_PACKAGE
+      addReasonReact && RESCRIPT_REACT_PACKAGE
     ]
       .flat()
       .filter(Boolean)
